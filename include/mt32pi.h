@@ -59,6 +59,7 @@
 #include "pisound.h"
 #include "power.h"
 #include "ringbuffer.h"
+#include "synth/d110/d110synth.h"
 #include "synth/mt32romset.h"
 #include "synth/mt32synth.h"
 #include "synth/soundfontsynth.h"
@@ -112,6 +113,7 @@ private:
 	bool InitNetwork();
 	bool InitMT32Synth();
 	bool InitSoundFontSynth();
+	bool InitD110Synth();
 
 	// Tasks for specific CPU cores
 	void MainTask();
@@ -212,6 +214,8 @@ private:
 	CSynthBase* m_pCurrentSynth;
 	CMT32Synth* m_pMT32Synth;
 	CSoundFontSynth* m_pSoundFontSynth;
+	CD110Synth* m_pD110Synth;
+	u8 m_nD110PatchIndex;
 
 	// MIDI receive buffer
 	CRingBuffer<u8, MIDIRxBufferSize> m_MIDIRxBuffer;

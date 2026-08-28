@@ -29,6 +29,13 @@ OBJS		:=	src/config.o \
 			src/power.o \
 			src/rommanager.o \
 			src/soundfontmanager.o \
+			src/synth/d110/d110_bus.o \
+			src/synth/d110/d110corenative.o \
+			src/synth/d110/d110rommanager.o \
+			src/synth/d110/d110synth.o \
+			src/synth/d110/mcs96_cpu.o \
+			src/synth/d110/msm6222b.o \
+			src/synth/d110/ram_mirror.o \
 			src/synth/mt32synth.o \
 			src/synth/soundfontsynth.o \
 			src/zoneallocator.o
@@ -38,7 +45,8 @@ EXTRACLEAN	+=	src/*.d src/*.o \
 			src/lcd/*.d src/lcd/*.o \
 			src/lcd/drivers/*.d src/lcd/drivers/*.o \
 			src/net/*.d src/net/*.o \
-			src/synth/*.d src/synth/*.o
+			src/synth/*.d src/synth/*.o \
+			src/synth/d110/*.d src/synth/d110/*.o
 
 #
 # inih

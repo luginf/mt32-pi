@@ -20,6 +20,7 @@ To those who supported this project in the past, especially whilst I was a strug
 
 - A work-in-progress baremetal MIDI synthesizer for the Raspberry Pi 3 or above, based on [Munt], [FluidSynth] and [Circle].
 - Turn your Raspberry Pi into a dedicated emulation of the [famous multi-timbre sound module][Roland MT-32] used by countless classic MS-DOS, PC-98 and Sharp X68000 games!
+- 🧪 **Experimental** Roland D-110 emulation (this fork only, not upstream): runs the real D-110 firmware on an emulated MCS-96 CPU, same approach as the [D-110 VST Emulator] project. Boots and produces sound, but MIDI channel-to-part routing is currently broken (see below) - not ready for regular use yet.
 - Add your favorite [SoundFonts][SoundFont] to expand your synthesizer with [General MIDI], [Roland GS], or even [Yamaha XG] support for endless MIDI possibilities.
 - Includes General MIDI and Roland GS support out of the box thanks to [GeneralUser GS] by S. Christian Collins.
 - No operating system, no complex Linux audio configuration; just super-low latency audio.
@@ -49,6 +50,8 @@ To those who supported this project in the past, especially whilst I was a strug
 - [Embedded FTP server][FTP server] for remote access to files.
 - A user interface with menu system is _planned_.
 - More advanced MIDI routing is _planned_.
+- 🧪 Experimental Roland D-110 emulation (this fork only) - see the note above; known issues:
+  MIDI channel-to-part routing doesn't work correctly yet, and audio can crackle.
 
 ## ✨ Quick-start guide
 
@@ -67,6 +70,7 @@ Otherwise, for a manual installation:
 4. Optionally add your favorite SoundFonts to the `soundfonts` directory.
     * For information on using multiple SoundFonts and switching between them, see the [SoundFont synthesis] wiki page.
     * Again, file names/extensions don't matter.
+4b. 🧪 Experimental, this fork only: for D-110 support, add the five D-110 chip dump files (control ROM, presets ROM, LCD character-generator ROM, and the two PCM wave ROMs) to a `roms/d110` directory. Unlike MT-32 ROMs, the three control-board files need their documented exact chip filenames (`d-110.v1.10.ic19.bin`, `r15179873-lh5310-97.ic12.bin`, `msm6222b-01.bin`) - see the [D-110 VST Emulator]'s own `docs/roms.md` for where to get dumps and full filename/checksum details.
 5. Edit the `mt32-pi.cfg` file to enable any optional hardware (Hi-Fi DAC, displays, buttons). Refer to [the wiki][mt32-pi wiki] to find supported hardware.
     * **MiSTer users**: Read the [MiSTer setup] section of the wiki for the recommended configuration, and ignore the following two steps.
 6. Connect a [USB MIDI interface][USB MIDI interfaces] or [GPIO MIDI circuit][GPIO MIDI interface] to the Pi, and connect some speakers to the headphone jack.
@@ -121,6 +125,7 @@ The [mt32-pi logo] was designed by and is © Dale Whinham. The terms of use for 
 [Circle]: https://github.com/rsta2/circle
 [Configuration file]: https://github.com/dwhinham/mt32-pi/wiki/Configuration-file
 [Control surface]: https://github.com/dwhinham/mt32-pi/wiki/Control-surface
+[D-110 VST Emulator]: https://github.com/luginf/d110-vst-emulator
 [Discussions]: https://github.com/dwhinham/mt32-pi/discussions
 [Edu Arana (Arananet)]: https://www.arananet.net/pedidos
 [FAQ]: https://github.com/dwhinham/mt32-pi/wiki/FAQ

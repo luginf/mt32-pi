@@ -119,7 +119,9 @@ CMT32Pi::CMT32Pi(CI2CMaster* pI2CMaster, CSPIMaster* pSPIMaster, CInterruptSyste
 	  m_nMasterVolume(100),
 	  m_pCurrentSynth(nullptr),
 	  m_pMT32Synth(nullptr),
-	  m_pSoundFontSynth(nullptr)
+	  m_pSoundFontSynth(nullptr),
+	  m_pD110Synth(nullptr),
+	  m_nD110PatchIndex(0)
 {
 	s_pThis = this;
 }
@@ -275,11 +277,16 @@ bool CMT32Pi::Initialize(bool bSerialMIDIAvailable)
 	LCDLog(TLCDLogType::Startup, "Init FluidSynth");
 	InitSoundFontSynth();
 
+	LCDLog(TLCDLogType::Startup, "Init D-110");
+	InitD110Synth();
+
 	// Set initial synthesizer
 	if (m_pConfig->SystemDefaultSynth == CConfig::TSystemDefaultSynth::MT32)
 		m_pCurrentSynth = m_pMT32Synth;
 	else if (m_pConfig->SystemDefaultSynth == CConfig::TSystemDefaultSynth::SoundFont)
 		m_pCurrentSynth = m_pSoundFontSynth;
+	else if (m_pConfig->SystemDefaultSynth == CConfig::TSystemDefaultSynth::D110)
+		m_pCurrentSynth = m_pD110Synth;
 
 	if (!m_pCurrentSynth)
 	{
@@ -290,6 +297,8 @@ bool CMT32Pi::Initialize(bool bSerialMIDIAvailable)
 			m_pCurrentSynth = m_pMT32Synth;
 		else if (m_pSoundFontSynth)
 			m_pCurrentSynth = m_pSoundFontSynth;
+		else if (m_pD110Synth)
+			m_pCurrentSynth = m_pD110Synth;
 		else
 		{
 			LOGPANIC("No synths available; ROMs/SoundFonts not found");
@@ -406,6 +415,26 @@ bool CMT32Pi::InitSoundFontSynth()
 	}
 
 	m_pSoundFontSynth->SetUserInterface(&m_UserInterface);
+
+	return true;
+}
+
+bool CMT32Pi::InitD110Synth()
+{
+	assert(m_pD110Synth == nullptr);
+
+	// Reuses the mt32emu gain/reverb settings for now - the D-110 shares the same underlying
+	// LA32 sound engine, and dedicated D110Emu* config keys aren't wired up yet.
+	m_pD110Synth = new CD110Synth(m_pConfig->AudioSampleRate, m_pConfig->MT32EmuGain, m_pConfig->MT32EmuReverbGain);
+	if (!m_pD110Synth->Initialize())
+	{
+		LOGWARN("D-110 init failed; no ROMs present?");
+		delete m_pD110Synth;
+		m_pD110Synth = nullptr;
+		return false;
+	}
+
+	m_pD110Synth->SetUserInterface(&m_UserInterface);
 
 	return true;
 }
@@ -1043,6 +1072,8 @@ void CMT32Pi::ProcessEventQueue()
 					m_pMT32Synth->AllSoundOff();
 				if (m_pSoundFontSynth)
 					m_pSoundFontSynth->AllSoundOff();
+				if (m_pD110Synth)
+					m_pD110Synth->AllSoundOff();
 				break;
 
 			case TEventType::DisplayImage:
@@ -1069,9 +1100,11 @@ void CMT32Pi::ProcessButtonEvent(const TButtonEvent& Event)
 
 	if (Event.Button == TButton::Button1 && !Event.bRepeat)
 	{
-		// Swap synths
+		// Cycle synths: MT-32 -> SoundFont -> D-110 -> MT-32 ...
 		if (m_pCurrentSynth == m_pMT32Synth)
 			SwitchSynth(TSynth::SoundFont);
+		else if (m_pCurrentSynth == m_pSoundFontSynth)
+			SwitchSynth(TSynth::D110);
 		else
 			SwitchSynth(TSynth::MT32);
 	}
@@ -1079,6 +1112,18 @@ void CMT32Pi::ProcessButtonEvent(const TButtonEvent& Event)
 	{
 		if (m_pCurrentSynth == m_pMT32Synth)
 			NextMT32ROMSet();
+		else if (m_pCurrentSynth == m_pD110Synth)
+		{
+			// Next D-110 Patch (Internal memory, 0-63), sent as a real Program Change on Part
+			// 1's factory-default channel (2, i.e. status 0xC1) - the D-110 is multitimbral, so
+			// unlike MT-32 ROM sets/SoundFonts this only ever targets Part 1, and assumes the
+			// user hasn't reassigned it to a different SYSTEM channel (see the control-surface
+			// scope decision: no full front-panel emulation from mt32-pi's own buttons).
+			m_nD110PatchIndex = (m_nD110PatchIndex + 1) % 64;
+			const u32 nProgramChange = 0xC1 | (u32(m_nD110PatchIndex) << 8);
+			m_pD110Synth->HandleMIDIShortMessage(nProgramChange);
+			LCDLog(TLCDLogType::Notice, "D-110 Patch %d", m_nD110PatchIndex + 1);
+		}
 		else
 		{
 			// Next SoundFont
@@ -1123,6 +1168,8 @@ void CMT32Pi::SwitchSynth(TSynth NewSynth)
 		pNewSynth = m_pMT32Synth;
 	else if (NewSynth == TSynth::SoundFont)
 		pNewSynth = m_pSoundFontSynth;
+	else if (NewSynth == TSynth::D110)
+		pNewSynth = m_pD110Synth;
 
 	if (pNewSynth == nullptr)
 	{
@@ -1138,7 +1185,7 @@ void CMT32Pi::SwitchSynth(TSynth NewSynth)
 
 	m_pCurrentSynth->AllSoundOff();
 	m_pCurrentSynth = pNewSynth;
-	const char* pMode = NewSynth == TSynth::MT32 ? "MT-32 mode" : "SoundFont mode";
+	const char* pMode = NewSynth == TSynth::MT32 ? "MT-32 mode" : NewSynth == TSynth::SoundFont ? "SoundFont mode" : "D-110 mode";
 	LOGNOTE("Switching to %s", pMode);
 	LCDLog(TLCDLogType::Notice, pMode);
 }
@@ -1200,8 +1247,10 @@ void CMT32Pi::SetMasterVolume(s32 nVolume)
 		m_pMT32Synth->SetMasterVolume(m_nMasterVolume);
 	if (m_pSoundFontSynth)
 		m_pSoundFontSynth->SetMasterVolume(m_nMasterVolume);
+	if (m_pD110Synth)
+		m_pD110Synth->SetMasterVolume(m_nMasterVolume);
 
-	if (m_pCurrentSynth == m_pSoundFontSynth)
+	if (m_pCurrentSynth == m_pSoundFontSynth || m_pCurrentSynth == m_pD110Synth)
 		LCDLog(TLCDLogType::Notice, "Volume: %d", m_nMasterVolume);
 }
 

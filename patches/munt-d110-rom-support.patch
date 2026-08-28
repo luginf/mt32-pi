@@ -1,0 +1,54 @@
+diff --git a/src/ROMInfo.cpp b/src/ROMInfo.cpp
+index 0f58cd2..d719ddd 100644
+--- a/src/ROMInfo.cpp
++++ b/src/ROMInfo.cpp
+@@ -77,6 +77,10 @@ static const ROMInfoLists &getROMInfoLists() {
+ 	static const ROMInfo CTRL_CM32L_V1_00 = {65536, "73683d585cd6948cc19547942ca0e14a0319456d", ROMInfo::Control, "ctrl_cm32l_1_00", "CM-32L/LAPC-I Control v1.00", ROMInfo::Full, NULL};
+ 	static const ROMInfo CTRL_CM32L_V1_02 = {65536, "a439fbb390da38cada95a7cbb1d6ca199cd66ef8", ROMInfo::Control, "ctrl_cm32l_1_02", "CM-32L/LAPC-I Control v1.02", ROMInfo::Full, NULL};
+ 	static const ROMInfo CTRL_CM32LN_V1_00 = {65536, "dc1c5b1b90a4646d00f7daf3679733c7badc7077", ROMInfo::Control, "ctrl_cm32ln_1_00", "CM-32LN/CM-500/LAPC-N Control v1.00", ROMInfo::Full, NULL};
++	// D-110 support added for mt32-pi (see synth/d110/) - two SHA1s for the same firmware
++	// v1.10 + presets combination, matching real-world dumps that circulate under either.
++	static const ROMInfo CTRL_D110_V1_10_1 = {163840, "8b064509db7520e0633b8bea9e3ce3945fc7de54", ROMInfo::Control, "ctrl_d110_1_10_1", "D-110 Control v1.10", ROMInfo::Full, NULL};
++	static const ROMInfo CTRL_D110_V1_10_2 = {163840, "8d549f3382a23b8faa64e3988f913d403a92887f", ROMInfo::Control, "ctrl_d110_1_10_2", "D-110 Control v1.10", ROMInfo::Full, NULL};
+ 
+ 	static ROMInfo PCM_MT32_L = {262144, "3a1e19b0cd4036623fd1d1d11f5f25995585962b", ROMInfo::PCM, "pcm_mt32_l", "MT-32 PCM ROM", ROMInfo::FirstHalf, NULL};
+ 	static ROMInfo PCM_MT32_H = {262144, "2cadb99d21a6a4a6f5b61b6218d16e9b43f61d01", ROMInfo::PCM, "pcm_mt32_h", "MT-32 PCM ROM", ROMInfo::SecondHalf, &PCM_MT32_L};
+@@ -85,6 +89,7 @@ static const ROMInfoLists &getROMInfoLists() {
+ 	static ROMInfo PCM_CM32L_L = {524288, "f6b1eebc4b2d200ec6d3d21d51325d5b48c60252", ROMInfo::PCM, "pcm_cm32l_l", "CM-32L/CM-64/LAPC-I PCM ROM", ROMInfo::FirstHalf, NULL};
+ 	static ROMInfo PCM_CM32L_H = {524288, "3ad889fde5db5b6437cbc2eb6e305312fec3df93", ROMInfo::PCM, "pcm_cm32l_h", "CM-32L/CM-64/LAPC-I PCM ROM", ROMInfo::SecondHalf, &PCM_CM32L_L};
+ 	static ROMInfo PCM_CM32L = {1048576, "289cc298ad532b702461bfc738009d9ebe8025ea", ROMInfo::PCM, "pcm_cm32l", "CM-32L/CM-64/LAPC-I PCM ROM", ROMInfo::Full, NULL};
++	static const ROMInfo PCM_D110 = {1048576, "8eb2e3857a36272eb66d64d8dcb82a6b14c8d26e", ROMInfo::PCM, "pcm_d110", "D-110 PCM ROM", ROMInfo::Full, NULL};
+ 
+ 	static const ROMInfo * const FULL_ROM_INFOS[] = {
+ 		&CTRL_MT32_V1_04,
+@@ -99,8 +104,11 @@ static const ROMInfoLists &getROMInfoLists() {
+ 		&CTRL_CM32L_V1_00,
+ 		&CTRL_CM32L_V1_02,
+ 		&CTRL_CM32LN_V1_00,
++		&CTRL_D110_V1_10_1,
++		&CTRL_D110_V1_10_2,
+ 		&PCM_MT32,
+ 		&PCM_CM32L,
++		&PCM_D110,
+ 		NULL
+ 	};
+ 	static const ROMInfo * const PARTIAL_ROM_INFOS[] = {
+diff --git a/src/Synth.cpp b/src/Synth.cpp
+index 0b81edb..8082ff2 100644
+--- a/src/Synth.cpp
++++ b/src/Synth.cpp
+@@ -112,7 +112,13 @@ static const ControlROMMap ControlROMMaps[] = {
+ 	{"ctrl_mt32_2_07",  NEW_MT32_COMPATIBLE, 0x8100, 128, 0x8000, 0x8000, true,  0x8080, 0x8000, true,  0x8500, 64, 0x8580, 85, 0x4F81, 0x4F9C, 0x4F8A, 0x48B9, 0x48BD, 0x48D6, 0x48ED, 0x5A78, 19, 0x1EE7, 0x4035},
+ 	{"ctrl_cm32l_1_00", NEW_MT32_COMPATIBLE, 0x8100, 256, 0x8000, 0x8000, true,  0x8080, 0x8000, true,  0x8500, 64, 0x8580, 85, 0x4F65, 0x4F80, 0x4F6E, 0x48A1, 0x48A5, 0x48BE, 0x48D5, 0x5A6C, 19, 0x1EF0, 0x401D},
+ 	{"ctrl_cm32l_1_02", NEW_MT32_COMPATIBLE, 0x8100, 256, 0x8000, 0x8000, true,  0x8080, 0x8000, true,  0x8500, 64, 0x8580, 85, 0x4F93, 0x4FAE, 0x4F9C, 0x48CB, 0x48CF, 0x48E8, 0x48FF, 0x5A96, 19, 0x1EE7, 0x4047},
+-	{"ctrl_cm32ln_1_00", CM32LN_COMPATIBLE,  0x8100, 256, 0x8000, 0x8000, true,  0x8080, 0x8000, true,  0x8500, 64, 0x8580, 85, 0x4EC7, 0x4EE2, 0x4ED0, 0x47FF, 0x4803, 0x481C, 0x4833, 0x55A2, 19, 0x1F59, 0x3F7C}
++	{"ctrl_cm32ln_1_00", CM32LN_COMPATIBLE,  0x8100, 256, 0x8000, 0x8000, true,  0x8080, 0x8000, true,  0x8500, 64, 0x8580, 85, 0x4EC7, 0x4EE2, 0x4ED0, 0x47FF, 0x4803, 0x481C, 0x4833, 0x55A2, 19, 0x1F59, 0x3F7C},
++	// D-110 support added for mt32-pi (see synth/d110/) - memory offsets ported verbatim from
++	// the D-110 VST Emulator project's own munt fork (measured against real firmware, not
++	// derived here); both entries share identical offsets, matching the two ROM SHA1s
++	// ROMInfo.cpp now recognises for the same v1.10 firmware+presets combination.
++	{"ctrl_d110_1_10_1", NEW_MT32_COMPATIBLE, 0x8900, 256, 0x8000, 0x8000, true,  0x8080, 0x8000, true,  0x8D00, 64, 0x8D80, 85, 0x2CFF, 0x2D11, 0x2D08, 0x4A45, 0x4A49, 0x4A62, 0x4A79, 0x0000, 0,  0x1F99, 0x41EB},
++	{"ctrl_d110_1_10_2", NEW_MT32_COMPATIBLE, 0x8900, 256, 0x8000, 0x8000, true,  0x8080, 0x8000, true,  0x8D00, 64, 0x8D80, 85, 0x2CFF, 0x2D11, 0x2D08, 0x4A45, 0x4A49, 0x4A62, 0x4A79, 0x0000, 0,  0x1F99, 0x41EB}
+ 	// (Note that old MT-32 ROMs actually have 86 entries for rhythmTemp)
+ };
+ 
