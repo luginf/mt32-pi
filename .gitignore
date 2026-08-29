@@ -48,3 +48,9 @@ sdcard/*
 *.exe
 *.out
 *.app
+
+# Claude Code working notes (not for the public repo)
+.claude/
+
+# SC-55 ROM dumps (copyrighted firmware, never to be committed)
+src/synth/sc55/roms/

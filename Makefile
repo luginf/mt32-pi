@@ -5,7 +5,7 @@
 include Config.mk
 
 .DEFAULT_GOAL=all
-.PHONY: submodules circle-stdlib mt32emu fluidsynth all clean veryclean
+.PHONY: submodules circle-stdlib mt32emu fluidsynth all clean veryclean sc55 sc55-clean
 
 #
 # Functions to apply/reverse patches only if not completely applied/reversed already
@@ -139,6 +139,22 @@ $(FLUIDSYNTHBUILDDIR)/.done: $(CIRCLESTDLIBHOME)/.done
 #
 all: circle-stdlib mt32emu fluidsynth
 	@$(MAKE) -f Kernel.mk $(KERNEL).img $(KERNEL).hex
+
+#
+# Build the SC-55 emulator: opt-in, native host build only, deliberately NOT a dependency of
+# `all` and NOT invoked by CI. This code (src/synth/sc55/upstream) is under the MAME license,
+# not GPLv3 - it must never be linked into the mt32-pi kernel image or published as a compiled
+# artifact. See src/synth/sc55/NOTICE.md before touching this.
+#
+sc55:
+	@cmake -B build-sc55 -DUSE_SYSTEM_RTMIDI=ON -DCMAKE_BUILD_TYPE=Release src/synth/sc55/upstream
+	@cmake --build build-sc55 -j
+	@if [ -d src/synth/sc55/roms ]; then cp -f src/synth/sc55/roms/*.bin build-sc55/ 2>/dev/null || true; fi
+	@echo "Built build-sc55/nuked-sc55 (native host binary; not part of the Pi kernel image)."
+	@echo "See src/synth/sc55/NOTICE.md before publishing anything built from this."
+
+sc55-clean:
+	@$(RM) -r build-sc55
 
 #
 # Clean kernel only
